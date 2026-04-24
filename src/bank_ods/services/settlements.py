@@ -1,6 +1,8 @@
 import pymongo.errors
 from bank_ods.db.client import get_collection
-from bank_ods.services._common import parse_date, serialize_doc
+from bank_ods.services._common import clamp_skip, parse_date, serialize_doc
+
+_PAGE_SIZE = 200
 
 
 async def get_settlement(settlement_id: str) -> dict:
@@ -31,6 +33,7 @@ async def get_settlements(
     account_id: str,
     settlement_date: str,
     status: str | None = None,
+    skip: int = 0,
 ) -> dict:
     """Query settlements for an account on a specific settlement date (YYYY-MM-DD)."""
     try:
@@ -41,7 +44,8 @@ async def get_settlements(
         }
         if status:
             query["status"] = status
-        docs = await col.find(query, {"_id": 0}).to_list(length=200)
+        cursor = col.find(query, {"_id": 0}).skip(clamp_skip(skip)).limit(_PAGE_SIZE)
+        docs = await cursor.to_list(length=_PAGE_SIZE)
         return {"count": len(docs), "data": [serialize_doc(d) for d in docs]}
     except pymongo.errors.PyMongoError as e:
         return {"error": str(e), "code": "MONGO_ERROR"}
@@ -51,6 +55,7 @@ async def get_settlement_fails(
     from_date: str,
     to_date: str,
     account_id: str | None = None,
+    skip: int = 0,
 ) -> dict:
     """Find all FAILED settlements within a date window, optionally filtered by account."""
     try:
@@ -64,8 +69,13 @@ async def get_settlement_fails(
         }
         if account_id:
             query["accountId"] = account_id
-        cursor = col.find(query, {"_id": 0}).sort("settlementDate", -1).limit(200)
-        docs = await cursor.to_list(length=200)
+        cursor = (
+            col.find(query, {"_id": 0})
+            .sort("settlementDate", -1)
+            .skip(clamp_skip(skip))
+            .limit(_PAGE_SIZE)
+        )
+        docs = await cursor.to_list(length=_PAGE_SIZE)
         return {"count": len(docs), "data": [serialize_doc(d) for d in docs]}
     except pymongo.errors.PyMongoError as e:
         return {"error": str(e), "code": "MONGO_ERROR"}

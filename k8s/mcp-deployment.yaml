@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-ods-mcp
+  namespace: bank-ods
+  labels:
+    app: bank-ods-mcp
+spec:
+  # stdio mode: one replica per client connection model.
+  # For SSE/chatbot mode, increase replicas and expose via mcp-service.yaml.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bank-ods-mcp
+  template:
+    metadata:
+      labels:
+        app: bank-ods-mcp
+    spec:
+      containers:
+        - name: mcp
+          image: bank-ods-mcp:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8002
+          env:
+            - name: MCP_TRANSPORT
+              # Switch to "sse" when deploying as a chatbot backend.
+              value: stdio
+          envFrom:
+            - configMapRef:
+                name: bank-ods-config
+            - secretRef:
+                name: bank-ods-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi

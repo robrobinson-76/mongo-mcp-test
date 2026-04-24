@@ -9,7 +9,7 @@ This document covers how AI agents (Claude Code or any MCP-capable client) shoul
 ## MCP Server Identity
 
 **Server name:** `bank-ods`
-**Transport:** stdio
+**Transport:** controlled by `MCP_TRANSPORT` env var — `stdio` (default, Claude Desktop / VS Code) or `sse` (chatbot / K8s deployment)
 **Start command:** `python -m bank_ods.mcp`
 
 The server exposes 15 tools across five domains. All tools are read-only. There are no mutation tools.
@@ -65,6 +65,7 @@ List all accounts, with optional filters.
 - `client_id: str` *(optional)* — filter to a specific client
 - `status: str` *(optional)* — `"ACTIVE"`, `"SUSPENDED"`, or `"CLOSED"`
 - `limit: int` *(optional, default 20, max 200)* — number of results
+- `skip: int` *(optional, default 0)* — number of records to skip (for pagination)
 
 **Returns:** `{"count": N, "data": [...]}`
 
@@ -99,6 +100,7 @@ Query transactions for an account over a date range.
 - `status: str` *(optional)* — `"PENDING"`, `"MATCHED"`, `"SETTLED"`, `"FAILED"`, `"CANCELLED"`
 - `transaction_type: str` *(optional)* — `"BUY"`, `"SELL"`, `"DEPOSIT"`, `"WITHDRAWAL"`, `"TRANSFER_IN"`, `"TRANSFER_OUT"`, `"DIVIDEND"`, `"FX"`
 - `limit: int` *(optional, default 50, max 200)*
+- `skip: int` *(optional, default 0)* — number of records to skip (for pagination)
 
 **Returns:** `{"count": N, "data": [...]}` sorted by tradeDate descending
 
@@ -393,17 +395,17 @@ get_position_history(account_id, security_id, from_date, to_date)
 
 ## Limits and Performance
 
-| Tool | Default Limit | Max Limit |
-|---|---|---|
-| list_accounts | 20 | 200 |
-| get_transactions | 50 | 200 |
-| get_positions | 200 | 200 |
-| get_position_history | 200 | 200 |
-| get_settlements | 200 | 200 |
-| get_settlement_fails | 200 | 200 |
-| get_cash_balances | 50 | 50 |
+| Tool | Default Limit | Max Limit | Supports skip |
+|---|---|---|---|
+| list_accounts | 20 | 200 | yes |
+| get_transactions | 50 | 200 | yes |
+| get_positions | 200 | 200 | yes |
+| get_position_history | 200 | 200 | yes |
+| get_settlements | 200 | 200 | yes |
+| get_settlement_fails | 200 | 200 | yes |
+| get_cash_balances | 50 | 50 | yes |
 
-When `count` in the result equals your `limit`, there may be more records. Narrow the date range or add filters rather than raising the limit.
+When `count` in the result equals your `limit`, there may be more records. Use `skip` to page forward, or narrow the date range and add filters.
 
 ---
 
@@ -492,9 +494,19 @@ Do not construct settlement IDs from transaction IDs. Use `get_settlement_status
 
 The service layer calls `datetime.fromisoformat()` on date strings. Partial ISO formats (e.g., `"2025-03"`) will fail. Always use full `"YYYY-MM-DD"` strings.
 
-### Pagination is not supported
+### Pagination
 
-The service layer has a hard limit of 200 records. There is no cursor or pagination token. If you need more than 200 records, narrow your date range or add filters.
+All list tools support a `skip: int = 0` parameter for offset-based pagination. Use `skip` + `limit` together:
+
+```
+# Page 1: first 50 transactions
+get_transactions(account_id, from_date, to_date, limit=50, skip=0)
+
+# Page 2: next 50
+get_transactions(account_id, from_date, to_date, limit=50, skip=50)
+```
+
+The page size cap is 200 records per call. If `count` in the response equals your `limit`, there may be more records — either paginate with `skip` or narrow your date range and filters.
 
 ### Do not infer IDs
 

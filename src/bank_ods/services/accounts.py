@@ -1,6 +1,6 @@
 import pymongo.errors
 from bank_ods.db.client import get_collection
-from bank_ods.services._common import clamp_limit, serialize_doc
+from bank_ods.services._common import clamp_limit, clamp_skip, serialize_doc
 
 
 async def get_account(account_id: str) -> dict:
@@ -19,6 +19,7 @@ async def list_accounts(
     client_id: str | None = None,
     status: str | None = None,
     limit: int = 20,
+    skip: int = 0,
 ) -> dict:
     """List accounts with optional filters by client_id and/or status."""
     try:
@@ -28,8 +29,9 @@ async def list_accounts(
             query["clientId"] = client_id
         if status:
             query["status"] = status
-        cursor = col.find(query, {"_id": 0}).limit(clamp_limit(limit))
-        docs = await cursor.to_list(length=clamp_limit(limit))
+        n = clamp_limit(limit)
+        cursor = col.find(query, {"_id": 0}).skip(clamp_skip(skip)).limit(n)
+        docs = await cursor.to_list(length=n)
         return {"count": len(docs), "data": [serialize_doc(d) for d in docs]}
     except pymongo.errors.PyMongoError as e:
         return {"error": str(e), "code": "MONGO_ERROR"}

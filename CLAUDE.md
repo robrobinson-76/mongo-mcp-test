@@ -14,11 +14,11 @@ This is a self-contained local development prototype. It is **not** a production
 
 | Doc | What it covers |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Current-state architecture: layers, domain model, service API, indexes, testing strategy, design decisions |
-| [docs/AGENTS.md](docs/AGENTS.md) | MCP tool reference, parameter formats, query patterns, naming conventions, best practices for AI agents |
-| [docs/DESIGN.md](docs/DESIGN.md) | Original schema and design decisions — **reference only, do not modify** |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Current-state architecture: layers, domain model, service API, indexes, K8s deployment, design decisions |
+| [docs/AGENTS.md](docs/AGENTS.md) | MCP tool reference, parameter formats, pagination, query patterns, naming conventions, best practices |
 | [docs/PLAN.md](docs/PLAN.md) | Original phased implementation plan — **reference only, do not modify** |
 | [docs/PLAN-multilayer.md](docs/PLAN-multilayer.md) | Unified MCP/REST/GraphQL plan — **reference only, do not modify** |
+| [docs/PLAN-k8s-scalability.md](docs/PLAN-k8s-scalability.md) | K8s scalability implementation plan — **reference only, do not modify** |
 
 Read `ARCHITECTURE.md` for codebase orientation. Read `AGENTS.md` before writing queries or extending the MCP tool surface.
 
@@ -56,7 +56,7 @@ Environment: copy `.env.example` to `.env`. See `ARCHITECTURE.md` → Environmen
 
 ## MCP integration
 
-Server name: `bank-ods`. Transport: stdio. See [docs/AGENTS.md](docs/AGENTS.md) for the full tool reference and `claude_desktop_config.json` registration block.
+Server name: `bank-ods`. Transport: `stdio` (default for Claude Desktop / VS Code) or `sse` (K8s chatbot deployment — set `MCP_TRANSPORT=sse`). See [docs/AGENTS.md](docs/AGENTS.md) for the full tool reference and `claude_desktop_config.json` registration block.
 
 ---
 

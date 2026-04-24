@@ -1,6 +1,8 @@
 import pymongo.errors
 from bank_ods.db.client import get_collection
-from bank_ods.services._common import parse_date, serialize_doc
+from bank_ods.services._common import clamp_skip, parse_date, serialize_doc
+
+_PAGE_SIZE = 200
 
 
 async def get_position(account_id: str, security_id: str, as_of_date: str) -> dict:
@@ -22,15 +24,19 @@ async def get_position(account_id: str, security_id: str, as_of_date: str) -> di
         return {"error": str(e), "code": "MONGO_ERROR"}
 
 
-async def get_positions(account_id: str, as_of_date: str) -> dict:
+async def get_positions(account_id: str, as_of_date: str, skip: int = 0) -> dict:
     """Fetch all positions for an account on a given date (YYYY-MM-DD)."""
     try:
         col = get_collection("positions")
-        cursor = col.find(
-            {"accountId": account_id, "asOfDate": parse_date(as_of_date)},
-            {"_id": 0},
-        ).limit(200)
-        docs = await cursor.to_list(length=200)
+        cursor = (
+            col.find(
+                {"accountId": account_id, "asOfDate": parse_date(as_of_date)},
+                {"_id": 0},
+            )
+            .skip(clamp_skip(skip))
+            .limit(_PAGE_SIZE)
+        )
+        docs = await cursor.to_list(length=_PAGE_SIZE)
         return {"count": len(docs), "data": [serialize_doc(d) for d in docs]}
     except pymongo.errors.PyMongoError as e:
         return {"error": str(e), "code": "MONGO_ERROR"}
@@ -41,6 +47,7 @@ async def get_position_history(
     security_id: str,
     from_date: str,
     to_date: str,
+    skip: int = 0,
 ) -> dict:
     """Return EOD position history for an account/security over a date range."""
     try:
@@ -58,9 +65,10 @@ async def get_position_history(
                 {"_id": 0},
             )
             .sort("asOfDate", 1)
-            .limit(200)
+            .skip(clamp_skip(skip))
+            .limit(_PAGE_SIZE)
         )
-        docs = await cursor.to_list(length=200)
+        docs = await cursor.to_list(length=_PAGE_SIZE)
         return {"count": len(docs), "data": [serialize_doc(d) for d in docs]}
     except pymongo.errors.PyMongoError as e:
         return {"error": str(e), "code": "MONGO_ERROR"}

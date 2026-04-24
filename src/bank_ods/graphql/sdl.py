@@ -100,27 +100,27 @@ def _list_type_block(model: type[BankDocument]) -> str:
 _QUERY_FIELDS = """
   # Accounts
   get_account(accountId: String!): Account
-  list_accounts(clientId: String, status: String, limit: Int): AccountList!
+  list_accounts(clientId: String, status: String, limit: Int, skip: Int): AccountList!
 
   # Transactions
   get_transaction(transactionId: String!): Transaction
-  get_transactions(accountId: String!, fromDate: String!, toDate: String!, status: String, transactionType: String, limit: Int): TransactionList!
+  get_transactions(accountId: String!, fromDate: String!, toDate: String!, status: String, transactionType: String, limit: Int, skip: Int): TransactionList!
   get_transaction_summary(accountId: String!, fromDate: String!, toDate: String!): TransactionSummaryList!
 
   # Positions
   get_position(accountId: String!, securityId: String!, asOfDate: String!): Position
-  get_positions(accountId: String!, asOfDate: String!): PositionList!
-  get_position_history(accountId: String!, securityId: String!, fromDate: String!, toDate: String!): PositionList!
+  get_positions(accountId: String!, asOfDate: String!, skip: Int): PositionList!
+  get_position_history(accountId: String!, securityId: String!, fromDate: String!, toDate: String!, skip: Int): PositionList!
 
   # Settlements
   get_settlement(settlementId: String!): Settlement
   get_settlement_status(transactionId: String!): Settlement
-  get_settlements(accountId: String!, settlementDate: String!, status: String): SettlementList!
-  get_settlement_fails(fromDate: String!, toDate: String!, accountId: String): SettlementList!
+  get_settlements(accountId: String!, settlementDate: String!, status: String, skip: Int): SettlementList!
+  get_settlement_fails(fromDate: String!, toDate: String!, accountId: String, skip: Int): SettlementList!
 
   # Balances
   get_cash_balance(accountId: String!, currency: String!, asOfDate: String!): CashBalance
-  get_cash_balances(accountId: String!, asOfDate: String!): CashBalanceList!
+  get_cash_balances(accountId: String!, asOfDate: String!, skip: Int): CashBalanceList!
   get_projected_balance(accountId: String!, currency: String!, asOfDate: String!): ProjectedBalance
 """
 

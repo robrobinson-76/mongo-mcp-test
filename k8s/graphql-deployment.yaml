@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-ods-graphql
+  namespace: bank-ods
+  labels:
+    app: bank-ods-graphql
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bank-ods-graphql
+  template:
+    metadata:
+      labels:
+        app: bank-ods-graphql
+    spec:
+      containers:
+        - name: graphql
+          image: bank-ods-graphql:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: bank-ods-config
+            - secretRef:
+                name: bank-ods-secrets
+          resources:
+            requests:
+              cpu: 125m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 2

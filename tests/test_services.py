@@ -40,6 +40,17 @@ async def test_list_accounts_by_status():
         assert acct["status"] == "ACTIVE"
 
 
+async def test_list_accounts_skip():
+    """skip=1 returns one fewer account than skip=0; first items offset by 1."""
+    full = await svc_accounts.list_accounts(limit=50, skip=0)
+    skipped = await svc_accounts.list_accounts(limit=50, skip=1)
+    assert "error" not in full
+    assert "error" not in skipped
+    if full["count"] > 1:
+        assert skipped["count"] == full["count"] - 1
+        assert skipped["data"][0]["accountId"] == full["data"][1]["accountId"]
+
+
 # ── Transactions ───────────────────────────────────────────────────────────────
 
 async def test_get_transaction_found(first_settled_txn):
@@ -65,6 +76,25 @@ async def test_get_transactions(first_account):
     assert "count" in result
 
 
+async def test_get_transactions_skip(first_account):
+    """skip=1 offsets results; item[0] of skipped page == item[1] of full page."""
+    base = dict(
+        account_id=first_account["accountId"],
+        from_date="2020-01-01",
+        to_date="2030-01-01",
+        limit=200,  # max — so we see all docs and the skip difference is visible
+    )
+    full = await svc_transactions.get_transactions(**base, skip=0)
+    skipped = await svc_transactions.get_transactions(**base, skip=1)
+    assert "error" not in full
+    assert "error" not in skipped
+    if full["count"] > 1:
+        # Count drops by 1 only when the full result is below the page cap
+        if full["count"] < 200:
+            assert skipped["count"] == full["count"] - 1
+        assert skipped["data"][0]["transactionId"] == full["data"][1]["transactionId"]
+
+
 async def test_get_transaction_summary(first_account):
     result = await svc_transactions.get_transaction_summary(
         account_id=first_account["accountId"],
@@ -88,6 +118,20 @@ async def test_get_positions(db, first_account):
     assert result["count"] > 0
 
 
+async def test_get_positions_skip(db, first_account):
+    """skip reduces result count and offsets correctly."""
+    pos_doc = await db.positions.find_one({"accountId": first_account["accountId"]}, {"_id": 0})
+    if pos_doc is None:
+        pytest.skip("No positions for this account")
+    as_of = pos_doc["asOfDate"].strftime("%Y-%m-%d")
+    full = await svc_positions.get_positions(first_account["accountId"], as_of, skip=0)
+    skipped = await svc_positions.get_positions(first_account["accountId"], as_of, skip=1)
+    assert "error" not in full
+    assert "error" not in skipped
+    if full["count"] > 1:
+        assert skipped["count"] == full["count"] - 1
+
+
 # ── Settlements ───────────────────────────────────────────────────────────────
 
 async def test_get_settlement_fails():
@@ -97,6 +141,16 @@ async def test_get_settlement_fails():
     assert "error" not in result
     assert isinstance(result["data"], list)
     assert result["count"] >= 0
+
+
+async def test_get_settlement_fails_skip():
+    """skip reduces the fail count when there are at least 2 fails."""
+    full = await svc_settlements.get_settlement_fails("2020-01-01", "2030-01-01", skip=0)
+    skipped = await svc_settlements.get_settlement_fails("2020-01-01", "2030-01-01", skip=1)
+    assert "error" not in full
+    assert "error" not in skipped
+    if full["count"] > 1:
+        assert skipped["count"] == full["count"] - 1
 
 
 async def test_get_settlement_status(db, first_settled_txn):
@@ -127,6 +181,17 @@ async def test_get_cash_balances(first_balance):
     )
     assert "error" not in result
     assert result["count"] > 0
+
+
+async def test_get_cash_balances_skip(first_balance):
+    """skip reduces balance count when at least 2 currencies exist for the account/date."""
+    as_of = first_balance["asOfDate"].strftime("%Y-%m-%d")
+    full = await svc_balances.get_cash_balances(first_balance["accountId"], as_of, skip=0)
+    skipped = await svc_balances.get_cash_balances(first_balance["accountId"], as_of, skip=1)
+    assert "error" not in full
+    assert "error" not in skipped
+    if full["count"] > 1:
+        assert skipped["count"] == full["count"] - 1
 
 
 async def test_get_projected_balance(first_balance):

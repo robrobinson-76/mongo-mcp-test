@@ -1,6 +1,8 @@
 import pymongo.errors
 from bank_ods.db.client import get_collection
-from bank_ods.services._common import parse_date, serialize_doc
+from bank_ods.services._common import clamp_skip, parse_date, serialize_doc
+
+_PAGE_SIZE = 50
 
 
 async def get_cash_balance(account_id: str, currency: str, as_of_date: str) -> dict:
@@ -22,14 +24,19 @@ async def get_cash_balance(account_id: str, currency: str, as_of_date: str) -> d
         return {"error": str(e), "code": "MONGO_ERROR"}
 
 
-async def get_cash_balances(account_id: str, as_of_date: str) -> dict:
+async def get_cash_balances(account_id: str, as_of_date: str, skip: int = 0) -> dict:
     """Fetch all currency balances for an account on a given date (YYYY-MM-DD)."""
     try:
         col = get_collection("cash_balances")
-        docs = await col.find(
-            {"accountId": account_id, "asOfDate": parse_date(as_of_date)},
-            {"_id": 0},
-        ).to_list(length=50)
+        cursor = (
+            col.find(
+                {"accountId": account_id, "asOfDate": parse_date(as_of_date)},
+                {"_id": 0},
+            )
+            .skip(clamp_skip(skip))
+            .limit(_PAGE_SIZE)
+        )
+        docs = await cursor.to_list(length=_PAGE_SIZE)
         return {"count": len(docs), "data": [serialize_doc(d) for d in docs]}
     except pymongo.errors.PyMongoError as e:
         return {"error": str(e), "code": "MONGO_ERROR"}

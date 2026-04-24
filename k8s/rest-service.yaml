@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-ods-rest
+  namespace: bank-ods
+spec:
+  selector:
+    app: bank-ods-rest
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+  # Use ClusterIP for internal access; switch to LoadBalancer or add Ingress
+  # when external exposure is needed.
+  type: ClusterIP

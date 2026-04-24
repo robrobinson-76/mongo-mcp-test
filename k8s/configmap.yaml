@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-ods-config
+  namespace: bank-ods
+data:
+  MONGODB_DB: bank_ods
+  LOG_LEVEL: INFO
+  DEBUG: "false"
+  MONGO_TIMEOUT_MS: "10000"
+---
+# Store MONGODB_URI in a Secret (not a ConfigMap) in production.
+# This placeholder assumes a MongoDB service named 'mongodb' in the same namespace.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bank-ods-secrets
+  namespace: bank-ods
+type: Opaque
+stringData:
+  MONGODB_URI: mongodb://mongodb:27017

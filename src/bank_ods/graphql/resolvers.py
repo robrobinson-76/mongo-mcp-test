@@ -17,8 +17,8 @@ async def resolve_get_account(_obj, _info, accountId: str):
 
 
 @query.field("list_accounts")
-async def resolve_list_accounts(_obj, _info, clientId=None, status=None, limit=20):
-    return await svc_accounts.list_accounts(clientId, status, limit)
+async def resolve_list_accounts(_obj, _info, clientId=None, status=None, limit=20, skip=0):
+    return await svc_accounts.list_accounts(clientId, status, limit, skip)
 
 
 # ── Transactions ───────────────────────────────────────────────────────────────
@@ -29,8 +29,8 @@ async def resolve_get_transaction(_obj, _info, transactionId: str):
 
 
 @query.field("get_transactions")
-async def resolve_get_transactions(_obj, _info, accountId, fromDate, toDate, status=None, transactionType=None, limit=50):
-    return await svc_transactions.get_transactions(accountId, fromDate, toDate, status, transactionType, limit)
+async def resolve_get_transactions(_obj, _info, accountId, fromDate, toDate, status=None, transactionType=None, limit=50, skip=0):
+    return await svc_transactions.get_transactions(accountId, fromDate, toDate, status, transactionType, limit, skip)
 
 
 @query.field("get_transaction_summary")
@@ -46,13 +46,13 @@ async def resolve_get_position(_obj, _info, accountId, securityId, asOfDate):
 
 
 @query.field("get_positions")
-async def resolve_get_positions(_obj, _info, accountId, asOfDate):
-    return await svc_positions.get_positions(accountId, asOfDate)
+async def resolve_get_positions(_obj, _info, accountId, asOfDate, skip=0):
+    return await svc_positions.get_positions(accountId, asOfDate, skip)
 
 
 @query.field("get_position_history")
-async def resolve_get_position_history(_obj, _info, accountId, securityId, fromDate, toDate):
-    return await svc_positions.get_position_history(accountId, securityId, fromDate, toDate)
+async def resolve_get_position_history(_obj, _info, accountId, securityId, fromDate, toDate, skip=0):
+    return await svc_positions.get_position_history(accountId, securityId, fromDate, toDate, skip)
 
 
 # ── Settlements ───────────────────────────────────────────────────────────────
@@ -68,13 +68,13 @@ async def resolve_get_settlement_status(_obj, _info, transactionId):
 
 
 @query.field("get_settlements")
-async def resolve_get_settlements(_obj, _info, accountId, settlementDate, status=None):
-    return await svc_settlements.get_settlements(accountId, settlementDate, status)
+async def resolve_get_settlements(_obj, _info, accountId, settlementDate, status=None, skip=0):
+    return await svc_settlements.get_settlements(accountId, settlementDate, status, skip)
 
 
 @query.field("get_settlement_fails")
-async def resolve_get_settlement_fails(_obj, _info, fromDate, toDate, accountId=None):
-    return await svc_settlements.get_settlement_fails(fromDate, toDate, accountId)
+async def resolve_get_settlement_fails(_obj, _info, fromDate, toDate, accountId=None, skip=0):
+    return await svc_settlements.get_settlement_fails(fromDate, toDate, accountId, skip)
 
 
 # ── Balances ──────────────────────────────────────────────────────────────────
@@ -85,8 +85,8 @@ async def resolve_get_cash_balance(_obj, _info, accountId, currency, asOfDate):
 
 
 @query.field("get_cash_balances")
-async def resolve_get_cash_balances(_obj, _info, accountId, asOfDate):
-    return await svc_balances.get_cash_balances(accountId, asOfDate)
+async def resolve_get_cash_balances(_obj, _info, accountId, asOfDate, skip=0):
+    return await svc_balances.get_cash_balances(accountId, asOfDate, skip)
 
 
 @query.field("get_projected_balance")

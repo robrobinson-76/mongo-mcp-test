@@ -1,4 +1,4 @@
-"""Parity harness — asserts MCP == REST == GraphQL == service for each operation.
+"""Parity harness — asserts REST == GraphQL == service for each operation.
 
 Each test case calls the service directly, then compares each transport's result.
 """
@@ -54,6 +54,26 @@ async def test_parity_list_accounts_count(rest_client, gql_client):
     assert service["count"] == rest["count"] == gql_count
 
 
+async def test_parity_skip_list_accounts(rest_client, gql_client):
+    """All three layers return the same records when skip=1 is applied."""
+    service = await svc_accounts.list_accounts(limit=20, skip=1)
+
+    rest_resp = await rest_client.get("/accounts", params={"limit": 20, "skip": 1})
+    rest = rest_resp.json()
+
+    gql_resp = await gql_query(
+        gql_client,
+        "{ list_accounts(limit: 20, skip: 1) { count data { accountId } } }",
+    )
+    gql = gql_resp["data"]["list_accounts"]
+
+    assert service["count"] == rest["count"] == gql["count"]
+    svc_ids = [d["accountId"] for d in service["data"]]
+    rest_ids = [d["accountId"] for d in rest["data"]]
+    gql_ids = [d["accountId"] for d in gql["data"]]
+    assert svc_ids == rest_ids == gql_ids
+
+
 # ── Transaction parity ────────────────────────────────────────────────────────
 
 async def test_parity_get_transactions_count(rest_client, gql_client, first_account):
@@ -74,6 +94,31 @@ async def test_parity_get_transactions_count(rest_client, gql_client, first_acco
     gql_count = gql_resp["data"]["get_transactions"]["count"]
 
     assert service["count"] == rest["count"] == gql_count
+
+
+async def test_parity_skip_transactions(rest_client, gql_client, first_account):
+    """skip=1 returns identical counts and first-item IDs across all three layers."""
+    account_id = first_account["accountId"]
+
+    service = await svc_transactions.get_transactions(
+        account_id=account_id, from_date="2020-01-01", to_date="2030-01-01", limit=20, skip=1
+    )
+    rest_resp = await rest_client.get("/transactions", params={
+        "account_id": account_id, "from_date": "2020-01-01", "to_date": "2030-01-01",
+        "limit": 20, "skip": 1,
+    })
+    rest = rest_resp.json()
+
+    gql_resp = await gql_query(
+        gql_client,
+        f'{{ get_transactions(accountId: "{account_id}", fromDate: "2020-01-01", toDate: "2030-01-01", limit: 20, skip: 1) {{ count data {{ transactionId }} }} }}',
+    )
+    gql = gql_resp["data"]["get_transactions"]
+
+    assert service["count"] == rest["count"] == gql["count"]
+    if service["count"] > 0:
+        assert service["data"][0]["transactionId"] == rest["data"][0]["transactionId"]
+        assert rest["data"][0]["transactionId"] == gql["data"][0]["transactionId"]
 
 
 # ── Settlement parity ─────────────────────────────────────────────────────────
