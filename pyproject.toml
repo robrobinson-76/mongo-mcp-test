@@ -1,0 +1,29 @@
+[project]
+name = "bank-ods"
+version = "0.2.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=0.4",
+    "pymongo>=4.6",
+    "motor>=3.4",
+    "python-dotenv>=1.0",
+    "faker>=24.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "ariadne>=0.23",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-mock>=3.12",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bank_ods"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

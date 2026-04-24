@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "bank-ods": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "bank_ods.mcp"],
+      "cwd": "C:\\dev\\clio-git\\mongo-mcp-test",
+      "env": {
+        "MONGODB_URI": "mongodb://localhost:27017",
+        "MONGODB_DB": "bank_ods"
+      }
+    }
+  }
+}
