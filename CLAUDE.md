@@ -2,9 +2,25 @@
 
 ## Purpose
 
-Prototype demonstrating how a Python MCP (Model Context Protocol) server can sit in front of a MongoDB-backed bank ODS, giving an LLM structured, tool-driven access to operational data (transactions, positions, settlements, cash balances).
+Prototype exploring how a single MongoDB database can be exposed through three distinct interfaces — MCP, REST, and GraphQL — sharing one common data model (Pydantic v2) and one service layer.
 
-This is a self-contained local development prototype. It is **not** a production system. The goal is to validate the MCP ↔ MongoDB interaction pattern and explore what useful tooling looks like for an AI agent querying custodian-bank-style operational data.
+The domain is a simplified custodian bank ODS (accounts, positions, transactions, settlements, cash balances). The domain is illustrative, not the point. The point is validating that a single async service core can drive all three transports with identical semantics, enforced by a cross-layer parity test harness.
+
+This is a self-contained local development prototype. It is **not** a production system.
+
+---
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Current-state architecture: layers, domain model, service API, indexes, testing strategy, design decisions |
+| [docs/AGENTS.md](docs/AGENTS.md) | MCP tool reference, parameter formats, query patterns, naming conventions, best practices for AI agents |
+| [docs/DESIGN.md](docs/DESIGN.md) | Original schema and design decisions — **reference only, do not modify** |
+| [docs/PLAN.md](docs/PLAN.md) | Original phased implementation plan — **reference only, do not modify** |
+| [docs/PLAN-multilayer.md](docs/PLAN-multilayer.md) | Unified MCP/REST/GraphQL plan — **reference only, do not modify** |
+
+Read `ARCHITECTURE.md` for codebase orientation. Read `AGENTS.md` before writing queries or extending the MCP tool surface.
 
 ---
 
@@ -14,138 +30,39 @@ This is a self-contained local development prototype. It is **not** a production
 C:\dev\clio-git\mongo-mcp-test\
 ```
 
-All paths below are relative to this root.
-
 ---
 
-## Tech stack
-
-| Layer | Technology |
-|---|---|
-| Database | MongoDB (local, via Docker) |
-| MCP server | Python 3.11+, `fastmcp` library |
-| Seed data | Python script using `pymongo` + `faker` |
-| Package management | `uv` (preferred) or `pip` + `venv` |
-| IDE integration | VS Code with Claude extension; MCP wired via `claude_desktop_config.json` |
-| Runtime | Local Windows dev machine |
-
----
-
-## Project layout
-
-```
-mongo-mcp-test/
-├── CLAUDE.md                    ← this file
-├── docs/
-│   ├── DESIGN.md               ← schema and architecture decisions
-│   ├── PLAN.md                 ← original phased implementation tasks
-│   └── PLAN-multilayer.md      ← unified MCP/REST/GraphQL plan
-│
-├── docker-compose.yml           ← MongoDB container
-│
-├── src/
-│   └── bank_ods/
-│       ├── __init__.py
-│       ├── config.py            ← env loading
-│       ├── models/              ← Pydantic v2 entity models (single source of truth)
-│       ├── db/                  ← motor async client + index management
-│       ├── services/            ← async business logic (all three layers call these)
-│       ├── mcp/                 ← thin MCP layer (fastmcp)
-│       ├── rest/                ← thin REST layer (FastAPI)
-│       └── graphql/             ← thin GraphQL layer (Ariadne)
-│
-├── scripts/
-│   └── seed_data.py             ← loads sample data into MongoDB
-│
-├── tests/
-│   ├── conftest.py
-│   ├── test_services.py
-│   ├── test_mcp.py
-│   ├── test_rest.py
-│   ├── test_graphql.py
-│   └── test_parity.py          ← cross-layer equivalence harness
-│
-├── pyproject.toml               ← dependencies
-└── .env.example                 ← MONGODB_URI and other config vars
-```
-
----
-
-## Domain model (summary)
-
-Six collections model a simplified custodian bank ODS. See `DESIGN.md` for full schemas.
-
-| Collection | Purpose |
-|---|---|
-| `accounts` | Account master — client accounts held at the custodian |
-| `securities` | Security master — equities, bonds, funds |
-| `transactions` | Trade and cash transaction records |
-| `positions` | Current and historical security holdings per account |
-| `settlements` | Settlement instructions and lifecycle status |
-| `cash_balances` | Cash balance per account per currency |
-
-Collections use camelCase field names and ISO 8601 dates stored as MongoDB `Date` objects.
-
----
-
-## Architecture conventions
-
-- Three thin transport layers (MCP, REST, GraphQL) all call the same `bank_ods.services.*` functions.
-- `bank_ods.services.*` is the only place MongoDB is touched.
-- Pydantic v2 models in `bank_ods.models` are the single source of truth for field names, types, indexes, and serialisation.
-- MongoDB driver is `motor` (async). All service functions are `async def`.
-- Tool/endpoint names follow the pattern `verb_noun` — e.g. `get_transactions`, `get_position`, `get_settlement_status`.
-
----
-
-## Environment variables
-
-```
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DB=bank_ods
-MCP_SERVER_HOST=localhost
-MCP_SERVER_PORT=8000
-```
-
-Copy `.env.example` to `.env` before running.
-
----
-
-## Running locally
+## Quick start
 
 ```bash
-# 1. Start MongoDB
 docker compose up -d
-
-# 2. Install dependencies
-uv sync        # or: pip install -e ".[dev]"
-
-# 3. Seed sample data
+uv sync
 python scripts/seed_data.py
+pytest tests/ -v
 
-# 4a. Start MCP server (stdio — for VS Code Claude extension)
+# MCP server (stdio — Claude Code / VS Code)
 python -m bank_ods.mcp
 
-# 4b. Start REST API
+# REST API
 uvicorn bank_ods.rest:app --port 8000
 
-# 4c. Start GraphQL API
+# GraphQL API
 uvicorn bank_ods.graphql:app --port 8001
-
-# 5. Run full parity test harness
-pytest tests/ -v
 ```
 
----
-
-## VS Code / Claude integration
-
-The MCP server is registered in `claude_desktop_config.json` (see `DESIGN.md` → VS Code Integration section for the exact config block). Once registered, Claude Code in VS Code can call the MCP tools directly in any conversation opened against this project.
+Environment: copy `.env.example` to `.env`. See `ARCHITECTURE.md` → Environment Variables.
 
 ---
 
-## What Claude Code should NOT do in this project
+## MCP integration
 
-- Do not modify `docs/DESIGN.md` or `docs/PLAN.md` autonomously — those are reference docs.
-- Do not add authentication to MongoDB — this is local-only, no auth required.
-- Do not create additional collections beyond the six defined without discussion.
+Server name: `bank-ods`. Transport: stdio. See [docs/AGENTS.md](docs/AGENTS.md) for the full tool reference and `claude_desktop_config.json` registration block.
+
+---
+
+## Constraints — what Claude Code must not do
+
+- Do not add MongoDB authentication — local-only prototype, no auth needed.
+- Do not create collections beyond the six defined (`accounts`, `securities`, `transactions`, `positions`, `settlements`, `cash_balances`) without discussion.
+- Do not add MongoDB query logic outside `bank_ods/services/*` — all three transport layers must call the service layer.
+- Do not add mutation tools to the MCP server — this is a read-only ODS view.
